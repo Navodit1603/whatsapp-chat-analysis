@@ -17,7 +17,6 @@ def readFile(filepath):
         lines = file.readlines()
     return lines
 
-
 # List of dirty words from https://github.com/tural-ali
 def collectSwear():
     dirty_words = []
@@ -36,18 +35,26 @@ def countDirtyWords(message, dirtyWords):
             count += 1
     return count
 
-def countWords(message, word_cloud):
+def countWords(message, wordCloud):
     words = re.findall(r'\b\w+\b', message)
     for word in words:
-        if word.lower() in word_cloud.keys():
-            word_cloud[word.lower()] += 1
+        if word.lower() in wordCloud.keys():
+            wordCloud[word.lower()] += 1
         else:
-            word_cloud[word.lower()] = 1
+            wordCloud[word.lower()] = 1
     return len(words)
 
-def newMessage(line):
+def activeTimes(mostActiveTimes, text):
+    pattern = r"\[\d{2}/\d{2}/\d{2}, (\d{1,2}):\d{2}:\d{2}\s?(AM|PM)\]"
+    match = re.search(pattern, text)
+    if match:
+        hour, am_pm = match.groups()
+        mostActiveTimes[str(hour) + str(am_pm)] += 1
+
+def newMessage(line, mostActiveTimes):
     pattern = r"\[\d{1,2}/\d{1,2}/\d{1,2}, \d{1,2}:\d{2}:\d{2}\s[AP]M\]"
     cleaned_content = line.replace("\u200e", "")
+    activeTimes(mostActiveTimes, line)
     match = re.search(pattern, cleaned_content)
     if match:
         return True, match.end(), cleaned_content
@@ -84,19 +91,22 @@ def main(file):
     members = {}
     dirtyWords = collectSwear()
     lines = readFile(file)
-    word_cloud = {}
+    wordCloud = {}
+    mostActiveTimes = {"12AM" : 0, "1AM" : 0, "2AM" : 0, "3AM" : 0, "4AM" : 0, "5AM" : 0, "6AM" : 0, "7AM" : 0, "8AM" : 0, "9AM" : 0,
+                        "10AM" : 0, "11AM" : 0, "12PM" : 0, "1PM" : 0, "2PM" : 0, "3PM" : 0, "4PM" : 0, "5PM" : 0, "6PM" : 0, "7PM" : 0,
+                        "8PM" : 0, "9PM" : 0, "10PM" : 0, "11PM" : 0}
 
     name = ""
     message = ""
 
-    for line in lines:  
-        ifMatch, end_index, cleaned_content = newMessage(line)
+    for line in lines:
+        ifMatch, end_index, cleaned_content = newMessage(line, mostActiveTimes)
         
         if ifMatch:
             if name != "":
                 members[name]["messages_sent"] = members[name]["messages_sent"] + 1 # Number of messages update
                 members[name]["dirty_words_used"] = members[name]["dirty_words_used"] + countDirtyWords(message, dirtyWords)
-                members[name]["average_words_per_message"] = members[name]["average_words_per_message"] + countWords(message, word_cloud)
+                members[name]["average_words_per_message"] = members[name]["average_words_per_message"] + countWords(message, wordCloud)
                 message = ""
             
             name = cleaned_content[int(end_index) + 1 : int(cleaned_content.find(":", end_index))]
@@ -111,7 +121,9 @@ def main(file):
         members[name]["swear_to_messages"] = round(members[name]["dirty_words_used"] / members[name]["messages_sent"], 3)
         members[name]["average_words_per_message"] = round(members[name]["average_words_per_message"]/ members[name]["messages_sent"], 3)
     
-    members["general_chat"] = {"most_used_words": dict(sorted(word_cloud.items(), key=lambda item: item[1], reverse=True))}
+    members["general_chat"] = {}
+    members["general_chat"]["most_used_words"] = dict(sorted(wordCloud.items(), key=lambda item: item[1], reverse=True))
+    members["general_chat"]["most_active_times"] = mostActiveTimes
 
     saveDataToJson(members)
 if __name__ == "__main__":
