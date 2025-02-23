@@ -36,8 +36,13 @@ def countDirtyWords(message, dirtyWords):
             count += 1
     return count
 
-def countWords(message):
+def countWords(message, word_cloud):
     words = re.findall(r'\b\w+\b', message)
+    for word in words:
+        if word.lower() in word_cloud.keys():
+            word_cloud[word.lower()] += 1
+        else:
+            word_cloud[word.lower()] = 1
     return len(words)
 
 def newMessage(line):
@@ -79,6 +84,7 @@ def main(file):
     members = {}
     dirtyWords = collectSwear()
     lines = readFile(file)
+    word_cloud = {}
 
     name = ""
     message = ""
@@ -90,7 +96,7 @@ def main(file):
             if name != "":
                 members[name]["messages_sent"] = members[name]["messages_sent"] + 1 # Number of messages update
                 members[name]["dirty_words_used"] = members[name]["dirty_words_used"] + countDirtyWords(message, dirtyWords)
-                members[name]["average_words_per_message"] = members[name]["average_words_per_message"] + countWords(message)
+                members[name]["average_words_per_message"] = members[name]["average_words_per_message"] + countWords(message, word_cloud)
                 message = ""
             
             name = cleaned_content[int(end_index) + 1 : int(cleaned_content.find(":", end_index))]
@@ -104,6 +110,8 @@ def main(file):
     for name in members:
         members[name]["swear_to_messages"] = round(members[name]["dirty_words_used"] / members[name]["messages_sent"], 3)
         members[name]["average_words_per_message"] = round(members[name]["average_words_per_message"]/ members[name]["messages_sent"], 3)
+    
+    members["general_chat"] = {"most_used_words": dict(sorted(word_cloud.items(), key=lambda item: item[1], reverse=True))}
 
     saveDataToJson(members)
 if __name__ == "__main__":
