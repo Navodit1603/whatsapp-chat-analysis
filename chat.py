@@ -36,6 +36,10 @@ def countDirtyWords(message, dirtyWords):
             count += 1
     return count
 
+def countWords(message):
+    words = re.findall(r'\b\w+\b', message)
+    return len(words)
+
 def newMessage(line):
     pattern = r"\[\d{1,2}/\d{1,2}/\d{1,2}, \d{1,2}:\d{2}:\d{2}\s[AP]M\]"
     cleaned_content = line.replace("\u200e", "")
@@ -85,14 +89,13 @@ def main(file):
         if ifMatch:
             if name != "":
                 members[name]["messages_sent"] = members[name]["messages_sent"] + 1 # Number of messages update
-                if countDirtyWords(message, dirtyWords) > 0 and name == "Jason Mack":
-                    print(message)
                 members[name]["dirty_words_used"] = members[name]["dirty_words_used"] + countDirtyWords(message, dirtyWords)
+                members[name]["average_words_per_message"] = members[name]["average_words_per_message"] + countWords(message)
                 message = ""
             
             name = cleaned_content[int(end_index) + 1 : int(cleaned_content.find(":", end_index))]
             if name not in members.keys():
-                members[name] = {"messages_sent": 0, "dirty_words_used": 0, "swear_to_messages" : 0}
+                members[name] = {"messages_sent": 0, "dirty_words_used": 0, "swear_to_messages" : 0, "average_words_per_message": 0}
             
             message += cleaned_content[int(cleaned_content.find(":", end_index)): ]
         else:
@@ -100,6 +103,7 @@ def main(file):
 
     for name in members:
         members[name]["swear_to_messages"] = round(members[name]["dirty_words_used"] / members[name]["messages_sent"], 3)
+        members[name]["average_words_per_message"] = round(members[name]["average_words_per_message"]/ members[name]["messages_sent"], 3)
 
     saveDataToJson(members)
 if __name__ == "__main__":
