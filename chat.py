@@ -1,6 +1,5 @@
 import re
 import json
-from collections import Counter
 import sys
 from pathlib import Path
 
@@ -30,10 +29,12 @@ def collectSwear():
     return dirty_words
 
 def countDirtyWords(message, dirtyWords):
-    words_in_text = re.findall(r'\b\w+\b', message.lower())
-    word_counts = Counter(words_in_text)
-    total_count = sum(word_counts[word] for word in dirtyWords)
-    return total_count
+    words = re.findall(r'\b\w+\b', message)
+    count = 0
+    for word in words:
+        if word in dirtyWords:
+            count += 1
+    return count
 
 def newMessage(line):
     pattern = r"\[\d{1,2}/\d{1,2}/\d{1,2}, \d{1,2}:\d{2}:\d{2}\s[AP]M\]"
@@ -84,16 +85,21 @@ def main(file):
         if ifMatch:
             if name != "":
                 members[name]["messages_sent"] = members[name]["messages_sent"] + 1 # Number of messages update
+                if countDirtyWords(message, dirtyWords) > 0 and name == "Jason Mack":
+                    print(message)
                 members[name]["dirty_words_used"] = members[name]["dirty_words_used"] + countDirtyWords(message, dirtyWords)
                 message = ""
             
             name = cleaned_content[int(end_index) + 1 : int(cleaned_content.find(":", end_index))]
             if name not in members.keys():
-                members[name] = {"messages_sent": 0, "dirty_words_used": 0}
+                members[name] = {"messages_sent": 0, "dirty_words_used": 0, "swear_to_messages" : 0}
             
             message += cleaned_content[int(cleaned_content.find(":", end_index)): ]
         else:
             message += cleaned_content[int(cleaned_content.find(":", end_index)): ] + "\n"
+
+    for name in members:
+        members[name]["swear_to_messages"] = round(members[name]["dirty_words_used"] / members[name]["messages_sent"], 3)
 
     saveDataToJson(members)
 if __name__ == "__main__":
